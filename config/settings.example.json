@@ -4,12 +4,12 @@
 "credentials_file": "path/to/credentials.json"
 },
 "instagram": {
-"username": "_x1_y_z_",
-"password": "Johnny18#",
+"username": "XYZ",
+"password": "XYZ",
 "cookies_file": "path/to/instagram_cookies.json"
 },
 "tiktok": {
-"username": "thevoidscrolls",
+"username": "XYZ",
 "cookies_file": "path/to/tiktok_cookies.json"
 },
 "scraping_options": {
