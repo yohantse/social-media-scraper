@@ -78,8 +78,3 @@ This will:
 ## License
 
 MIT License
-
----
-
-Once you confirm, I can prepare the **`requirements.txt`** so you can install all dependencies at once.  
-Would you like to proceed?

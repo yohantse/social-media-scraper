@@ -1,0 +1,4 @@
+playwright
+yt-dlp
+gspread
+oauth2client
