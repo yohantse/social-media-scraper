@@ -1,0 +1,19 @@
+{
+"google_sheets": {
+"spreadsheet_id": "YOUR_SPREADSHEET_ID",
+"credentials_file": "path/to/credentials.json"
+},
+"instagram": {
+"username": "_x1_y_z_",
+"password": "Johnny18#",
+"cookies_file": "path/to/instagram_cookies.json"
+},
+"tiktok": {
+"username": "thevoidscrolls",
+"cookies_file": "path/to/tiktok_cookies.json"
+},
+"scraping_options": {
+"headless": true,
+"throttle_seconds": 5
+}
+}
