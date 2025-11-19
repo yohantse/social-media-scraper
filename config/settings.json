@@ -1,0 +1,10 @@
+{
+  "google_sheets": {
+    "spreadsheet_id": "YOUR_SPREADSHEET_ID_HERE",
+    "credentials_file": "../config/credentials.json"
+  },
+  "scraping_options": {
+    "headless": true,
+    "throttle_seconds": 2
+  }
+}

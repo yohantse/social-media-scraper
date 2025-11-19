@@ -1,0 +1,28 @@
+[
+    {
+        "platform": "YouTube",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)",
+        "views": 1714733720,
+        "likes": 18645209,
+        "comments": 2400000
+    },
+    {
+        "platform": "TikTok",
+        "url": "https://www.tiktok.com/@example/video/1234567890",
+        "title": "N/A",
+        "views": "N/A",
+        "likes": "N/A",
+        "comments": "N/A",
+        "shares": "N/A"
+    },
+    {
+        "platform": "Instagram",
+        "url": "https://www.instagram.com/reel/ABC123/",
+        "error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.instagram.com/reel/ABC123/\", waiting until \"load\"\n",
+        "title": "Error",
+        "views": "N/A",
+        "likes": "N/A",
+        "comments": "N/A"
+    }
+]
