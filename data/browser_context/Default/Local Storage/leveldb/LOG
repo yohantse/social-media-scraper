@@ -1,0 +1,6 @@
+2025/12/25-14:34:07.162 3248 Reusing MANIFEST C:\Users\yohan\dev\projects\social-media-scrapper\data\browser_context\Default\Local Storage\leveldb/MANIFEST-000001
+2025/12/25-14:34:07.175 3248 Recovering log #15
+2025/12/25-14:34:07.180 3248 Reusing old log C:\Users\yohan\dev\projects\social-media-scrapper\data\browser_context\Default\Local Storage\leveldb/000015.log 
+2025/12/25-14:34:21.970 32fc Level-0 table #18: started
+2025/12/25-14:34:21.982 32fc Level-0 table #18: 19579 bytes OK
+2025/12/25-14:34:21.986 32fc Delete type=0 #15

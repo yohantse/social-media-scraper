@@ -1,107 +1,148 @@
 import os
 import json
-from bookmarks_reader import read_bookmarks
-from youtube_scraper import scrape_youtube
-from tiktok_scraper import scrape_tiktok
-from instagram_scraper import scrape_instagram
-from sheets_writer import write_to_sheet
+import time
+from datetime import datetime
+from .services.sheet_service import GoogleSheetClient
+from .services.logger import setup_logger
+from .platforms.youtube import YouTubeScraper
+from .platforms.instagram import InstagramScraper
+from .platforms.tiktok import TikTokScraper
+import asyncio
+import nest_asyncio
 
+# We still use nest_asyncio just in case gspread or other libs have internal loops,
+# though we are now running a proper top-level loop.
+nest_asyncio.apply()
 
-def main():
-    """Main orchestrator for social media scraping."""
-    # File paths
-    CONFIG_FILE = os.path.join('..', 'config', 'settings.json')
-    DATA_FILE = os.path.join('..', 'data', 'bookmarks_export.html')
-    OUTPUT_FILE = os.path.join('..', 'data', 'output.json')
+logger = setup_logger('main_controller')
 
-    # Load configuration
-    try:
-        with open(CONFIG_FILE, 'r') as f:
-            config = json.load(f)
-    except FileNotFoundError:
-        print(f"Error: Configuration file not found at {CONFIG_FILE}")
-        return
-    except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in configuration file {CONFIG_FILE}")
-        return
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'settings.json')
+    with open(config_path, 'r') as f:
+        return json.load(f)
 
-    # Read bookmarks
-    try:
-        links = read_bookmarks(DATA_FILE)
-        print(f"Found {len(links)} bookmarked links")
-    except FileNotFoundError:
-        print(f"Error: Bookmarks file not found at {DATA_FILE}")
-        return
-    except Exception as e:
-        print(f"Error reading bookmarks: {e}")
-        return
+def get_scraper_for_url(url, config, active_scrapers):
+    scraper_instance = None
+    platform_name = None
 
-    # Scrape each link
-    results = []
-    for i, link in enumerate(links, 1):
-        print(f"\nProcessing {i}/{len(links)}: {link}")
-        
-        try:
-            if 'youtube.com' in link or 'youtu.be' in link:
-                print("  -> Scraping YouTube...")
-                result = scrape_youtube(link)
-                results.append(result)
-            elif 'tiktok.com' in link:
-                print("  -> Scraping TikTok...")
-                result = scrape_tiktok(link, headless=config.get('scraping_options', {}).get('headless', True))
-                results.append(result)
-            elif 'instagram.com' in link:
-                print("  -> Scraping Instagram...")
-                result = scrape_instagram(link, headless=config.get('scraping_options', {}).get('headless', True))
-                results.append(result)
-            else:
-                print(f"  -> Skipping unsupported platform")
-                results.append({
-                    'platform': 'Unknown',
-                    'url': link,
-                    'error': 'Unsupported platform',
-                    'title': 'N/A',
-                    'views': 'N/A',
-                    'likes': 'N/A'
-                })
-        except Exception as e:
-            print(f"  -> Error: {e}")
-            results.append({
-                'platform': 'Error',
-                'url': link,
-                'error': str(e),
-                'title': 'N/A',
-                'views': 'N/A',
-                'likes': 'N/A'
-            })
-
-    # Save to local JSON
-    try:
-        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=4)
-        print(f"\n✓ Results saved to {OUTPUT_FILE}")
-    except Exception as e:
-        print(f"\nError saving results to JSON: {e}")
-
-    # Write to Google Sheets
-    try:
-        sheets_config = config.get('google_sheets', {})
-        credentials_file = sheets_config.get('credentials_file')
-        spreadsheet_id = sheets_config.get('spreadsheet_id')
-        
-        if credentials_file and spreadsheet_id:
-            print(f"\nWriting to Google Sheets...")
-            write_to_sheet(results, credentials_file, spreadsheet_id)
-            print("✓ Data written to Google Sheets successfully")
+    if 'youtube.com' in url or 'youtu.be' in url:
+        platform_name = 'YouTubeScraper'
+        if platform_name in active_scrapers:
+            scraper_instance = active_scrapers[platform_name]
         else:
-            print("\nSkipping Google Sheets export (credentials or spreadsheet ID not configured)")
+            scraper_instance = YouTubeScraper(config)
+            active_scrapers[platform_name] = scraper_instance
+    elif 'instagram.com' in url:
+        platform_name = 'InstagramScraper'
+        if platform_name in active_scrapers:
+            scraper_instance = active_scrapers[platform_name]
+        else:
+            scraper_instance = InstagramScraper(config)
+            active_scrapers[platform_name] = scraper_instance
+    elif 'tiktok.com' in url:
+        platform_name = 'TikTokScraper'
+        if platform_name in active_scrapers:
+            scraper_instance = active_scrapers[platform_name]
+        else:
+            scraper_instance = TikTokScraper(config)
+            active_scrapers[platform_name] = scraper_instance
+    return scraper_instance
+
+async def main():
+    logger.info("Starting Social Media Scraper...")
+
+    # 1. Load Config
+    try:
+        config = load_config()
     except Exception as e:
-        print(f"\nError writing to Google Sheets: {e}")
+        logger.error(f"Failed to load config: {e}")
+        return
 
-    print(f"\n{'='*50}")
-    print(f"Scraping complete! Processed {len(results)} links")
-    print(f"{'='*50}")
+    # 2. Connect to Google Sheet
+    try:
+        sheet_client = GoogleSheetClient(os.path.join(os.path.dirname(__file__), '..', 'config', 'settings.json'))
+        sheet_client.connect()
+        logger.info("Successfully connected to Google Sheet")
+    except Exception as e:
+        logger.error(f"Failed to connect to Google Sheets: {e}")
+        return
 
+    # 3. Read Rows
+    rows = sheet_client.get_rows()
+    if not rows:
+        logger.warning("No rows found in sheet.")
+        return
+
+    logger.info(f"Found {len(rows)} rows to process.")
+
+    # Check for required columns
+    required_cols = config['google_sheets']['columns'].values()
+    if rows and not all(col in rows[0] for col in required_cols if col != "Video URL"): # video url key varies
+        # We do a loose check or rely on the get_rows dict keys
+        # The sheet_client already maps them? No, sheet_service uses dictreader which uses header row.
+        # Use first row keys to validate
+        available_headers = list(rows[0].keys())
+        missing = [col for col in required_cols if col not in available_headers and col != config['google_sheets']['columns']['url']]
+        if missing:
+             logger.warning(f"Missing columns in sheet: {missing}. Update sheet headers to match settings.json.")
+
+    active_scrapers = {}
+
+    for i, row in enumerate(rows):
+        row_num = i + 2 # 1-based index, +1 for header
+        
+        url_col = config['google_sheets']['columns']['url']
+        url = row.get(url_col)
+
+        if not url:
+            logger.warning(f"Row {row_num} has no URL. Skipping.")
+            continue
+
+        logger.info(f"Processing Row {row_num}: {url}")
+
+        try:
+            scraper = get_scraper_for_url(url, config, active_scrapers)
+            if not scraper:
+                logger.warning(f"No scraper found for URL: {url}")
+                sheet_client.update_row(row_num, {'status': 'UNSUPPORTED_PLATFORM'})
+                continue
+
+            # Scrape
+            result = await scraper.scrape(url)
+            
+            if result.get('error'):
+                logger.error(f"Error scraping row {row_num}: {result['error']}")
+                sheet_client.update_row(row_num, {'status': f"ERROR: {result['error']}"})
+                continue
+
+            # Update Sheet
+            update_data = {
+                'views': result['views'],
+                'likes': result['likes'],
+                'last_updated': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'status': 'SUCCESS',
+                'platform': scraper.__class__.__name__.replace('Scraper', '')
+            }
+            sheet_client.update_row(row_num, update_data)
+
+        except Exception as e:
+            logger.error(f"Unexpected error processing row {row_num}: {e}")
+            try:
+                sheet_client.update_row(row_num, {'status': f"CRITICAL_ERROR: {str(e)}"})
+            except:
+                pass # If update fails, just log it.
+
+    # Cleanup
+    logger.info("Cleaning up scrapers...")
+    for scraper in active_scrapers.values():
+        await scraper.close()
+    
+    logger.info("Scraping run complete.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Scraper stopped by user.")
+    except Exception as e:
+        logger.critical(f"Fatal error: {e}")

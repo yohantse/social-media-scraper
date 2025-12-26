@@ -2,4 +2,7 @@ playwright
 yt-dlp
 gspread
 google-auth
+google-api-python-client
+playwright-stealth
 beautifulsoup4
+nest_asyncio

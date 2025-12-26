@@ -1,10 +1,51 @@
 {
   "google_sheets": {
-    "spreadsheet_id": "YOUR_SPREADSHEET_ID_HERE",
-    "credentials_file": "../config/credentials.json"
+    "spreadsheet_id": "1v9L8XLVsxZGTt9wMBLOmddN2c6kXlXahZqzAcYWpUYk",
+    "credentials_file": "../config/credentials.json",
+    "worksheet_name": "INSTAGRAM RESEARCH - December",
+    "columns": {
+      "url": "VIDEO LINK: ",
+      "views": "Views",
+      "likes": "Likes",
+      "platform": "Platform",
+      "last_updated": "Last Updated",
+      "status": "Status"
+    }
   },
   "scraping_options": {
-    "headless": true,
-    "throttle_seconds": 2
+    "headless": false,
+    "throttle_seconds": 3,
+    "max_retries": 2,
+    "user_data_dir": "../data/browser_context"
+  },
+  "platforms": {
+    "instagram": {
+      "selectors": {
+        "views": [
+          "span:has-text('views')",
+          "span:has-text('view')",
+          "div[class*='view']"
+        ],
+        "likes": [
+          "button[aria-label*='like'] span",
+          "span[class*='like']",
+          "section button span"
+        ]
+      },
+      "timeout": 30000
+    },
+    "tiktok": {
+      "selectors": {
+        "views": [
+          "strong[data-e2e='video-views']",
+          "strong[data-e2e='browse-video-views']"
+        ],
+        "likes": [
+          "strong[data-e2e='like-count']",
+          "strong[data-e2e='browse-like-count']"
+        ]
+      },
+      "timeout": 30000
+    }
   }
 }
